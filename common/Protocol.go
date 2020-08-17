@@ -6,14 +6,19 @@ import (
 	"time"
 )
 
+//任务执行接口
 type IJobExecute interface {
 	Execute()
 }
 
+//任务执行处理函数
+type ExecuteHandler func()
+
 type Job struct {
-	Name         string      `json:"name"`
-	JobExeTarget IJobExecute `json:"jobExeTarget"`
-	CronExpr     string      `json:"cronExpr"`
+	Name         string         `json:"name"`
+	JobExeTarget IJobExecute    `json:"jobExeTarget"`
+	CronExpr     string         `json:"cronExpr"`
+	ExeHandler   ExecuteHandler `json:"exeHandler"`
 }
 
 //任务调度计划

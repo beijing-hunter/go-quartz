@@ -26,7 +26,7 @@ func (jobb *JobB) Execute() {
 	fmt.Println("exe task jobName ", jobb.JobName)
 }
 
-func TestAddJob(t *testing.T) {
+func TestAddJobObject(t *testing.T) {
 
 	var (
 		jobA *JobA
@@ -43,8 +43,27 @@ func TestAddJob(t *testing.T) {
 		JobName: "JobB",
 	}
 
-	worker.G_scheduler.RegisterJob(jobA.JobName, "*/6 * * * * * *", jobA)
-	worker.G_scheduler.RegisterJob(jobB.JobName, "*/6 * * * * * *", jobB)
+	worker.G_scheduler.RegisterJobObject(jobA.JobName, "*/6 * * * * * *", jobA)
+	worker.G_scheduler.RegisterJobObject(jobB.JobName, "*/6 * * * * * *", jobB)
+
+	//for {
+
+		//time.Sleep(1 * time.Second)
+	//}
+}
+
+func TestAddJobHandler(t *testing.T) {
+
+	worker.Init()
+
+	worker.G_scheduler.RegisterJobHandler("jobE", "*/8 * * * * * *", func() {
+		fmt.Println("exe task jobName", "jobE")
+	})
+
+	worker.G_scheduler.RegisterJobHandler("jobF", "*/10 * * * * * *", func() {
+		time.Sleep(11 * time.Second)
+		fmt.Println("exe task jobName", "jobF")
+	})
 
 	for {
 

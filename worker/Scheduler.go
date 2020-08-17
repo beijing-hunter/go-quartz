@@ -3,6 +3,7 @@ package worker
 import (
 	"fmt"
 	"go-quartz/common"
+	"sync"
 	"time"
 )
 
@@ -14,23 +15,30 @@ type Scheduler struct {
 }
 
 var (
-	G_scheduler *Scheduler
+	G_scheduler  *Scheduler
+	schdulerLock sync.Mutex
 )
 
 func initSchduler() {
 
-	G_scheduler = &Scheduler{
-		jobEventChan:      make(chan *common.JobEvent, 1000),
-		jobPlanTable:      make(map[string]*common.JobSchedulePlan),
-		jobExeResultChan:  make(chan *common.JobExecuteResult, 1000),
-		jobExecutingTable: make(map[string]*common.JobExecuteInfo),
-	}
+	schdulerLock.Lock()
+	defer schdulerLock.Unlock()
 
-	go G_scheduler.scheduleLoop()
+	if G_scheduler == nil {
+
+		G_scheduler = &Scheduler{
+			jobEventChan:      make(chan *common.JobEvent, 1000),
+			jobPlanTable:      make(map[string]*common.JobSchedulePlan),
+			jobExeResultChan:  make(chan *common.JobExecuteResult, 1000),
+			jobExecutingTable: make(map[string]*common.JobExecuteInfo),
+		}
+
+		go G_scheduler.scheduleLoop()
+	}
 }
 
-//注册任务
-func (scheduler *Scheduler) RegisterJob(jobName string, cronExpr string, execute common.IJobExecute) {
+//注册任务对象
+func (scheduler *Scheduler) RegisterJobObject(jobName string, cronExpr string, execute common.IJobExecute) {
 	var (
 		job      *common.Job
 		jobEvent *common.JobEvent
@@ -40,6 +48,25 @@ func (scheduler *Scheduler) RegisterJob(jobName string, cronExpr string, execute
 		Name:         jobName,
 		JobExeTarget: execute,
 		CronExpr:     cronExpr,
+		ExeHandler:   nil,
+	}
+
+	jobEvent = common.BuildJobEvent(common.JOB_EVENT_SAVE, job)
+	scheduler.jobEventChan <- jobEvent
+}
+
+//注册任务处理函数
+func (scheduler *Scheduler) RegisterJobHandler(jobName string, cronExpr string, handler common.ExecuteHandler) {
+	var (
+		job      *common.Job
+		jobEvent *common.JobEvent
+	)
+
+	job = &common.Job{
+		Name:         jobName,
+		JobExeTarget: nil,
+		CronExpr:     cronExpr,
+		ExeHandler:   handler,
 	}
 
 	jobEvent = common.BuildJobEvent(common.JOB_EVENT_SAVE, job)
@@ -70,6 +97,7 @@ func (scheduler *Scheduler) handlerJobEvent(event *common.JobEvent) {
 		err              error
 		jobIsExisted     bool
 	)
+
 	switch event.EventType {
 	case common.JOB_EVENT_SAVE:
 
